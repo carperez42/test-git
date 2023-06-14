@@ -3,38 +3,33 @@
 /*                                                        :::      ::::::::   */
 /*   ft_printf_00.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: carperez <carperez@student.45madrid>       +#+  +:+       +#+        */
+/*   By: carperez <carperez@student.42madrid.com    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2023/02/04 18:58:08 by carperez          #+#    #+#             */
-/*   Updated: 2023/02/26 15:12:07 by carperez         ###   ########.fr       */
+/*   Created: 2023/05/13 11:23:02 by carperez          #+#    #+#             */
+/*   Updated: 2023/05/13 11:23:02 by carperez         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ft_printf.h"
 
-static int	ft_string_printer(char **pPlace, int *nPrinted)
+// "ft_print_rowstr" displays the character pointed to by pPlace on stdout and
+// shifts it. It returns 1 every time it is executed.
+static int	ft_print_rowstr(char **pPlace)
 {
-	if (**pPlace != '%')
-	{
-		ft_putchar_fd(**pPlace, 1);
-		*pPlace += 1;
-		*nPrinted += 1;
-		return (0);
-	}
-	else
-	{
-		*pPlace += 1;
-		return (1);
-	}
+	ft_putchar_fd(**pPlace, 1);
+	*pPlace += 1;
+	return (1);
 }
 
-static void	ft_format_selector(t_set *pSet, int *nPrinted)
+// "ft_print_arg" displays on stdout the processed argument converted to
+// a string. It accumulates the number of characters printed so far.
+static void	ft_print_arg(t_set *pSet, int *nPrinted)
 {
 	char	*p_argstring;
 
 	p_argstring = NULL;
 	if (pSet->c_type == 'c' || pSet->c_type == '%')
-		p_argstring = ft_print_char(pSet, nPrinted);
+		ft_print_chr(pSet, nPrinted);
 	else if (pSet->c_type == 's')
 		p_argstring = ft_print_str(pSet, nPrinted);
 	else if (pSet->c_type == 'p')
@@ -45,22 +40,24 @@ static void	ft_format_selector(t_set *pSet, int *nPrinted)
 		p_argstring = ft_print_uns(pSet, nPrinted);
 	else if (pSet->c_type == 'x' || pSet->c_type == 'X')
 		p_argstring = ft_print_hex(pSet, nPrinted);
-	if (p_argstring != NULL)
+	if (p_argstring != NULL && pSet->c_type != 'c' && pSet->c_type != '%')
 	{
 		ft_putstr_fd(p_argstring, 1);
 		free(p_argstring);
 	}
-	else
+	else if (pSet->c_type != 'c' && pSet->c_type != '%')
 		pSet->f_error = 13;
-}	
+}
 
-static void	ft_pholder_capturer(char const *sToken, int *nPlace, t_set *pSet
-		, int *nPrinted)
+// "ft_pholder_capturer" confirms that the placeholder exists, analyzes its
+// configuration, and validates that it is legal. If the conditions are
+// fulfilled, it displays it on stdout.
+static int	ft_pholder_capturer(char const *sToken, t_set *pSet, int *nPrinted)
 {
 	int		ia;
 	char	*p_newpholder;
 
-	ia = 0;
+	ia = 1;
 	p_newpholder = NULL;
 	while (*(sToken + ia) != '\0' && !ft_isalpha(*(sToken + ia))
 		&& *(sToken + ia) != '%')
@@ -72,43 +69,53 @@ static void	ft_pholder_capturer(char const *sToken, int *nPlace, t_set *pSet
 		if (p_newpholder != NULL)
 		{
 			ft_strlcpy(p_newpholder, sToken, ia + 1);
-			*nPlace += ia;
-			ft_pholder_validator(p_newpholder, pSet);
+			ft_set_validator(p_newpholder, pSet);
 			free(p_newpholder);
 			if (!pSet->f_error)
-				ft_format_selector(pSet, nPrinted);
-			if (!pSet->f_error)
-				ft_set_starter(pSet);
+				ft_print_arg(pSet, nPrinted);
 		}
 	}
 	if (p_newpholder == NULL)
 		pSet->f_error = 1;
+	return (ia);
 }
 
+// "ft_print_core" displays character by character on stdout and accumulates
+// the number of each interaction, as long as it does not detect a possible
+// placeholder. If it detects a placeholder, it starts processing it.
+static void	ft_print_core(char **pPlace, t_set *pSet, int *nPrinted)
+{
+	int	ia;
+
+	ia = 0;
+	if (**pPlace != '%')
+		*nPrinted += ft_print_rowstr(pPlace);
+	else
+	{
+		ia = ft_pholder_capturer(*pPlace, pSet, nPrinted);
+		if (!pSet->f_error)
+		{
+			ft_set_starter(pSet);
+			*pPlace += ia;
+		}
+	}
+}
+
+// "ft_printf" is the main variadic function where the argument list is
+// initialized and freed. It also invokes the functions that will display on
+// stdout and shows the error message, just in case.
 int	ft_printf(char const *sPrint, ...)
 {
 	t_set	s_set;
 	int		n_printed;
-	int		ia;
 
-	ia = 0;
 	n_printed = 0;
 	if (sPrint != NULL)
 	{
 		va_start(s_set.lst_items, sPrint);
 		ft_set_starter(&s_set);
 		while (*sPrint != '\0' && !s_set.f_error)
-		{
-			if (ft_string_printer((char **)&sPrint, &n_printed))
-			{
-				ft_pholder_capturer(sPrint, &ia, &s_set, &n_printed);
-				if (!s_set.f_error)
-				{
-					sPrint += ia;
-					ia = 0;
-				}
-			}
-		}
+			ft_print_core((char **)&sPrint, &s_set, &n_printed);
 		va_end(s_set.lst_items);
 	}
 	return (n_printed);
