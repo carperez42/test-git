@@ -2,7 +2,7 @@
 
 int main()
 {
-	char	c = '45';
+	char	c = 't';
 
 	printf("%d hola\n", a);
 	return (0);
