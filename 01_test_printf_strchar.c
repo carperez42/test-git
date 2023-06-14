@@ -10,7 +10,7 @@ int	main()
 {
 	atexit(ft_leaks);
     int lon = 0;
-	char letra = 0;
+	char letra = 90;
 	ft_printf("******************01_test_printf_strchar************************\n");
 	ft_printf("\n");
 	printf("*************************(x<=z y<=z)*******************************\n");
