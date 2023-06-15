@@ -2,9 +2,8 @@
 
 int main()
 {
-	char	c = '67';
+	char	c = '7';
 
 	printf("%d hola\n", a);
-	printf("%d adios\n", 56);
 	return (0);
 }
